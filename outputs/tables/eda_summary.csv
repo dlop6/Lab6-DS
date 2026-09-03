@@ -1,0 +1,10 @@
+﻿metric,value,denominator
+videos_dataset,293.0,filas de videos
+channels_dataset,97.0,channel_id
+comments,406.0,filas de comentarios
+authors,332.0,author_channel_id
+commented_videos,19.0,video_id en comentarios
+videos_without_collected_comments,274.0,cobertura observada
+median_views_all_videos,1175.0,293 videos
+median_replies,0.0,406 comentarios
+median_comment_likes,2.0,comentarios con conteo válido

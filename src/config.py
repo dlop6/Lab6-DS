@@ -12,6 +12,8 @@ RAW_DIR = ROOT_DIR / "data" / "raw"
 PROCESSED_DIR = ROOT_DIR / "data" / "processed"
 TABLES_DIR = ROOT_DIR / "outputs" / "tables"
 FIGURES_DIR = ROOT_DIR / "outputs" / "figures"
+EDA_MIN_CATEGORY_N = 3
+SENTIMENT_SMALL_GROUP_N = 5
 
 RAW_VIDEOS_PATH = RAW_DIR / "youtube_videos.csv"
 RAW_COMMENTS_PATH = RAW_DIR / "youtube_comments.csv"

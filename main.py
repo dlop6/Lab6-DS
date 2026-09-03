@@ -69,5 +69,25 @@ def run_persona1_pipeline() -> None:
     print("=== pipeline de persona 1 completo, revisa data/processed/ y outputs/tables/ ===")
 
 
+def run_persona2_advance(include_sentiment: bool = False) -> None:
+    """Ejecuta solo los entregables del avance de Persona 2 (actividad 3)."""
+    from src import eda
+    print("=== persona 2: analisis exploratorio (actividad 3) ===")
+    tables = eda.run_eda()
+    print(f"[main] EDA generado: {len(tables)} tablas y 4 figuras")
+    if include_sentiment:
+        from src import nlp
+        nlp.run_sentiment()
+        print("[main] sentimiento preliminar generado")
+    else:
+        print("[main] sentimiento omitido; use --sentiment para descargar/usar el modelo de pysentimiento")
+    print("[main] comunidad preliminar pendiente de H3 (src/networks.py de Persona 3)")
+
+
 if __name__ == "__main__":
-    run_persona1_pipeline()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--stage", choices=["persona1", "persona2"], default="persona2")
+    parser.add_argument("--sentiment", action="store_true")
+    args = parser.parse_args()
+    run_persona1_pipeline() if args.stage == "persona1" else run_persona2_advance(args.sentiment)

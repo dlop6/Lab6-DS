@@ -1,0 +1,4 @@
+﻿question_id,question,answer
+3.6.1,¿Qué categoría tiene mayor mediana de comentarios por video (n>=3)?,"News & Politics (mediana=7.0, n=16)"
+3.6.2,¿Qué relación hay entre autores únicos y comentarios por video?,"Spearman rho=0.998, p=2.822e-22, n=19"
+3.6.3,¿Difieren descriptivamente las vistas entre videos con múltiples query_hits y uno solo?,"{'single': {'count': 19, 'median': 1954.0, 'mean': 20046.11}}"

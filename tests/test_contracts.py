@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src import config, io_data
+from src import eda
 
 
 def test_raw_videos_shape():
@@ -72,3 +73,23 @@ def test_commented_videos_count():
         f"hay {n_unique_videos} video_id unicos en comments, "
         f"se esperaban {config.EXPECTED_COMMENTED_VIDEOS}"
     )
+
+
+def test_persona2_video_participation_contract():
+    import pandas as pd
+    videos = pd.read_csv(config.PROCESSED_DIR / "videos_clean.csv", encoding=config.CSV_ENCODING)
+    comments = pd.read_csv(config.PROCESSED_DIR / "comments_clean.csv", encoding=config.CSV_ENCODING)
+    result = eda.build_video_participation(videos, comments)
+    assert len(result) == config.EXPECTED_COMMENTED_VIDEOS
+    assert result["comment_count"].sum() == config.EXPECTED_COMMENTS_SHAPE[0]
+    assert result["video_id"].is_unique
+
+
+def test_persona2_concentration_denominator():
+    import pandas as pd
+    videos = pd.read_csv(config.PROCESSED_DIR / "videos_clean.csv", encoding=config.CSV_ENCODING)
+    comments = pd.read_csv(config.PROCESSED_DIR / "comments_clean.csv", encoding=config.CSV_ENCODING)
+    concentration = eda.build_concentration(eda.build_video_participation(videos, comments))
+    assert set(concentration["top_n_requested"]) == {5, 10}
+    assert (concentration["total_comments"] == config.EXPECTED_COMMENTS_SHAPE[0]).all()
+    assert concentration["share_pct"].between(0, 100).all()
