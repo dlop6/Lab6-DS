@@ -1,8 +1,16 @@
 """
-punto de entrada del pipeline de persona 1 (actividades 1 y 2 del laboratorio).
-esto NO es el orquestador final del proyecto (eso le toca a persona 3 con las
-etapas de eda/red bipartita), pero run_persona1_pipeline() se puede importar
-tal cual desde el main.py definitivo cuando se integre.
+orquestador definitivo del proyecto (arquitectura de repo, owner: Persona 3).
+
+ejecuta el pipeline por etapas: data, eda
+y bipartite. el orquestador
+no contiene logica de negocio propia: cada etapa delega a las funciones que
+ya viven en su modulo/owner correspondiente.
+
+uso:
+    python main.py --stage data
+    python main.py --stage eda [--sentiment]
+    python main.py --stage bipartite
+    python main.py --stage all [--sentiment]     # corre las 3 etapas en orden
 """
 import sys
 from pathlib import Path
@@ -12,6 +20,9 @@ from src import config, io_data, cleaning
 
 
 def run_persona1_pipeline() -> None:
+    """Etapa 'data': actividades 1 y 2 (carga, integracion, calidad, limpieza).
+    Logica sin modificar, solo re-expuesta bajo el nombre de
+    etapa que usa el orquestador definitivo."""
     print("=== persona 1: carga, integracion, calidad y limpieza ===")
 
     # 1. carga cruda
@@ -66,7 +77,74 @@ def run_persona1_pipeline() -> None:
     count_conversion_audit.to_csv(config.TABLES_DIR / "count_conversion_audit.csv", index=False, encoding="utf-8-sig")
     text_cleaning_effect.to_csv(config.TABLES_DIR / "text_cleaning_effect.csv", index=False, encoding="utf-8-sig")
 
-    print("=== pipeline de persona 1 completo, revisa data/processed/ y outputs/tables/ ===")
+    print("=== etapa 'data' completa, revisa data/processed/ y outputs/tables/ ===")
+
+
+def run_persona2_advance(include_sentiment: bool = False) -> None:
+    """Etapa 'eda': actividad 3 (analisis exploratorio)."""
+    from src import eda
+    print("=== persona 2: analisis exploratorio (actividad 3) ===")
+    tables = eda.run_eda()
+    print(f"[main] EDA generado: {len(tables)} tablas y 4 figuras")
+    if include_sentiment:
+        from src import nlp
+        nlp.run_sentiment()
+        print("[main] sentimiento preliminar generado")
+    else:
+        print("[main] sentimiento omitido; use --sentiment para descargar/usar el modelo de pysentimiento")
+    print("=== etapa 'eda' completa ===")
+
+
+def run_persona3_bipartite() -> None:
+    """Etapa 'bipartite': actividad 4 y soporte de la actividad 5 (red bipartita
+    autor-video, tablas, cobertura, figura y proyecciones preliminares).
+    """
+    from src import networks
+    print("=== persona 3: red bipartita autor-video (actividad 4) ===")
+    networks.run_bipartite_stage()
+    print("=== etapa 'bipartite' completa, revisa outputs/tables/ y outputs/figures/ ===")
+
+
+STAGES = {
+    "data": lambda args: run_persona1_pipeline(),
+    "eda": lambda args: run_persona2_advance(args.sentiment),
+    "bipartite": lambda args: run_persona3_bipartite(),
+}
+
+
+def run_all(args) -> None:
+    for stage_fn in STAGES.values():
+        stage_fn(args)
+
+
+def run_persona2_advance(include_sentiment: bool = False) -> None:
+    """Ejecuta solo los entregables del avance de Persona 2 (actividad 3)."""
+    from src import eda
+    print("=== persona 2: analisis exploratorio (actividad 3) ===")
+    tables = eda.run_eda()
+    print(f"[main] EDA generado: {len(tables)} tablas y 4 figuras")
+    if include_sentiment:
+        from src import nlp
+        nlp.run_sentiment()
+        print("[main] sentimiento preliminar generado")
+    else:
+        print("[main] sentimiento omitido; use --sentiment para descargar/usar el modelo de pysentimiento")
+    print("[main] comunidad preliminar pendiente de H3 (src/networks.py de Persona 3)")
+
+
+def run_persona2_advance(include_sentiment: bool = False) -> None:
+    """Ejecuta solo los entregables del avance de Persona 2 (actividad 3)."""
+    from src import eda
+    print("=== persona 2: analisis exploratorio (actividad 3) ===")
+    tables = eda.run_eda()
+    print(f"[main] EDA generado: {len(tables)} tablas y 4 figuras")
+    if include_sentiment:
+        from src import nlp
+        nlp.run_sentiment()
+        print("[main] sentimiento preliminar generado")
+    else:
+        print("[main] sentimiento omitido; use --sentiment para descargar/usar el modelo de pysentimiento")
+    print("[main] comunidad preliminar pendiente de H3 (src/networks.py de Persona 3)")
 
 
 def run_persona2_advance(include_sentiment: bool = False) -> None:
@@ -86,8 +164,12 @@ def run_persona2_advance(include_sentiment: bool = False) -> None:
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--stage", choices=["persona1", "persona2"], default="persona2")
-    parser.add_argument("--sentiment", action="store_true")
+    parser = argparse.ArgumentParser(description="Orquestador del pipeline de Laboratorio 6.")
+    parser.add_argument("--stage", choices=[*STAGES.keys(), "all"], default="all")
+    parser.add_argument("--sentiment", action="store_true", help="incluye el precompute de sentimiento en la etapa eda")
     args = parser.parse_args()
-    run_persona1_pipeline() if args.stage == "persona1" else run_persona2_advance(args.sentiment)
+
+    if args.stage == "all":
+        run_all(args)
+    else:
+        STAGES[args.stage](args)
