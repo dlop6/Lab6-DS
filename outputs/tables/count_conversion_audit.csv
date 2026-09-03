@@ -1,0 +1,3 @@
+﻿dataset,variable_origen,variable_derivada,n_total,n_parsed_ok,n_blank_to_nan,n_uninterpretable_to_nan,n_mismatch_vs_reference,reference_variable,notes
+videos,view_count_text,view_count_from_text,293,280,0,0,53,view_count,"view_count es la fuente primaria para calculos, discrepancias no se resuelven aqui"
+comments,like_count_text,like_count,406,217,189,0,0,NA,"blanco se convierte a NaN, nunca a cero, no se imputa"

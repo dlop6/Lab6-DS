@@ -1,0 +1,2 @@
+﻿total_comments,matched_both,unmatched_left_only,coverage_pct,unique_videos_in_videos,unique_video_ids_in_comments,videos_with_comments_count,videos_without_comments_count,validate_mode,join_type,passed
+406,406,0,100.0,293,19,19,274,many_to_one,left,True

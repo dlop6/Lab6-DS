@@ -1,0 +1,4 @@
+﻿dataset,check,n_affected,example_ids
+videos,full_row_duplicates,0,
+comments,full_row_duplicates,0,
+comments,text_value_duplicates,4,"Ugx74OPnWkWaFjpFuA94AaABAg.A7ki-1ED5b2A7nIcG2_svP, Ugx8FxDKPAY-M_JhRgd4AaABAg, Ugy__nsWCBggw9EzOUd4AaABAg.A7lbRpGUZoHA7nJxaD37u-, Ugz7WPxTOQEwmZpnx_V4AaABAg"

@@ -1,0 +1,38 @@
+﻿dataset,variable,tipo_observado,rol,unidad_de_observacion,descripcion,usar_en_analisis
+videos,video_id,texto/identificador,PK,video,"identificador unico del video, llave primaria",si
+videos,title,texto,variable_texto_principal,video,"titulo del video, fuente para topicos/palabras",si
+videos,channel_name,texto/categorica,etiqueta_visible,video,"nombre visible del canal, puede repetirse o cambiar",con_precaucion
+videos,channel_id,texto/identificador,identificador_secundario,video,"id unico del canal, preferible a channel_name",si
+videos,source_query,texto/categorica,metadato_muestreo,video,"describe como se busco el video, no el tema definitivo",con_precaucion
+videos,source_group,categorica,atributo,video,estrategia de busqueda: topic/official_gov/channel,si
+videos,dataset_sources,texto/lista,metadato_muestreo,video,"archivos origen antes de integrar, separados por |",con_precaucion
+videos,channel_handle,texto/identificador_visible,etiqueta_visible,video,"handle del canal, util para mostrar, no como id",con_precaucion
+videos,published_time,texto/temporal_relativo,atributo,video,"tiempo relativo desde publicacion, depende del momento de recoleccion",con_precaucion
+videos,view_count_text,texto_numerico,atributo,video,"vistas en formato texto de youtube, usar view_count para calculos",con_precaucion
+videos,description_snippet,texto,atributo,video,"fragmento de descripcion, puede estar incompleto",con_precaucion
+videos,video_url,texto/url,atributo,video,"url completa, sirve para verificar, no como id",no
+videos,query_hits,texto/lista,metadato_muestreo,video,"consultas que recuperaron el video, requiere parseo a lista",con_precaucion
+videos,keywords,texto/lista,atributo,video,"palabras clave del video, puede venir vacia []",con_precaucion
+videos,description,texto,variable_texto_principal,video,"descripcion completa, fuente para topicos",si
+videos,view_count,numerica_entera,atributo,video,"vistas observadas al recolectar, fuente primaria para popularidad",si
+videos,publish_date,fecha_hora,atributo,video,fecha/hora de publicacion iso 8601,si
+videos,upload_date,fecha_hora,atributo,video,coincide 100% con publish_date en este dataset,no
+videos,category,categorica,atributo,video,categoria asignada por youtube,si
+videos,owner_handle,texto/identificador_visible,etiqueta_visible,video,coincide 100% con channel_handle en este dataset,no
+comments,video_id,texto/identificador,FK,comentario_principal,"id del video comentado, llave foranea hacia videos",si
+comments,comment_id,texto/identificador,PK,comentario_principal,"identificador unico del comentario, llave primaria",si
+comments,video_title,texto,atributo_redundante,comentario_principal,"redundante, se obtiene via join por video_id",no
+comments,channel_name,texto/categorica,etiqueta_visible,comentario_principal,"canal dueno del video, no del autor del comentario",con_precaucion
+comments,channel_id,texto/identificador,identificador_secundario,comentario_principal,"id del canal dueno del video comentado, distinto de author_channel_id",si
+comments,author_name,texto,etiqueta_visible,comentario_principal,"nombre visible del autor, puede cambiar",con_precaucion
+comments,author_channel_id,texto/identificador,identificador_secundario,comentario_principal,"id del autor del comentario, usar para nodos de red",si
+comments,text,texto,variable_texto_principal,comentario_principal,"contenido del comentario, base para nlp y sentimiento",si
+comments,source_query,texto/categorica,metadato_muestreo,comentario_principal,consulta que llevo a recolectar este comentario,con_precaucion
+comments,source_group,categorica,atributo,comentario_principal,tipo de fuente: topic/channel,si
+comments,dataset_sources,texto/lista,metadato_muestreo,comentario_principal,"archivos origen antes de integrar, separados por |",con_precaucion
+comments,author_handle,texto/identificador_visible,etiqueta_visible,comentario_principal,"handle del autor, no usar como id",con_precaucion
+comments,published_text,texto/temporal_relativo,atributo,comentario_principal,tiempo relativo desde publicacion del comentario,con_precaucion
+comments,like_count_text,texto_numerico,atributo,comentario_principal,"likes en texto, puede venir en blanco, requiere parseo",con_precaucion
+comments,reply_count,numerica_entera,atributo,comentario_principal,"cantidad de respuestas, nunca crear aristas con esto",con_precaucion
+comments,is_pinned,logica/booleana,no_usable,comentario_principal,"constante False en los 406 registros, sin variabilidad",no
+comments,viewer_rating,numerica_vacia,no_usable,comentario_principal,vacia en el 100% de los registros,no

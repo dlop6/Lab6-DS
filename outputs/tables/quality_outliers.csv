@@ -1,0 +1,3 @@
+﻿dataset,variable,metodo,limite_inferior,limite_superior,n_outliers,pct_outliers
+videos,view_count,iqr,-10660.0,18340.0,49,16.72
+comments,reply_count,iqr,0.0,0.0,30,7.39
