@@ -18,7 +18,9 @@ python -m spacy download es_core_news_sm
 lab6/
   data/raw/            youtube_videos.csv, youtube_comments.csv (INMUTABLES)
   data/processed/      videos_clean.csv, comments_clean.csv, comments_enriched.csv
-  src/                 modulos por responsabilidad (config, io_data, cleaning, eda, nlp, networks, ...)
+  src/                 modulos por responsabilidad (config, io_data, cleaning, eda, nlp,
+                       networks, metrics, communities, ...)
+  docs/                guia oficial, plan de trabajo, notas de interpretacion por persona
   outputs/tables/      csv de resultados (auditorias, EDA, red, proyecciones, ...)
   outputs/figures/     figuras generadas
   tests/               pytest de contratos criticos
@@ -47,6 +49,8 @@ python main.py --stage data        # Persona 1: actividades 1-2 (carga, calidad,
 python main.py --stage eda         # Persona 2: actividad 3 (EDA). Agregar --sentiment para
                                     #   precomputar sentimiento (descarga el modelo de pysentimiento)
 python main.py --stage bipartite   # Persona 3: actividad 4 (red bipartita autor-video)
+python main.py --stage metrics     # Persona 1: actividad 6 (topologia y fragmentacion)
+python main.py --stage communities # Persona 2: actividades 7 y 9 (comunidades, contenido/sentimiento)
 ```
 
 Cada etapa lee lo que la etapa anterior dejó en `data/processed/`, así que para
@@ -71,6 +75,43 @@ un run limpio de principio a fin se corre `data` antes que `eda` o `bipartite`.
   `outputs/tables/author_projection_edges_preliminary.csv` y
   `video_projection_edges_preliminary.csv`, generadas con
   `src/networks.build_author_projection()` / `build_video_projection()`.
+
+## Estado de la entrega final — Persona 2 (actividades 7 y 9)
+
+Etapa `python main.py --stage communities`. Reutiliza la bipartita y las
+proyecciones de `src/networks.py` (nunca las reconstruye a mano) y, para
+sentimiento, reutiliza `sentiment_comments.csv` sin volver a correr el modelo.
+
+- **Comunidades (actividad 7)**: Louvain sobre `video_projection` (`weight="weight"`,
+  `resolution=1`, `seed=42`) en `src/communities.py`. Resultado: **12 comunidades**,
+  modularidad **Q=0.4053** (`outputs/tables/community_metrics.csv`). Dos
+  comunidades concentran 4 y 3 videos respectivamente (contenido político/
+  gubernamental de canales como PrensaLibreOficial, Quorum, TN23 Guatemala y
+  el Gobierno de Guatemala); las otras 9 son videos sin ningún autor en común
+  con el resto (singletons), coherente con el 47% de aislamiento ya visto en
+  `video_projection` en la actividad 6. Tablas: `community_assignments.csv`,
+  `community_metrics.csv`, `community_content_summary.csv` (caracterización de
+  las 3 comunidades principales: videos, canales, autores, intensidad,
+  términos/bigramas). Figura: `outputs/figures/fig_video_communities.png`
+  (los 19 nodos y las 11 aristas, ningún nodo oculto por estética). Detalle
+  completo e interpretación en `docs/persona2_entrega_final.md`.
+- **Contenido y sentimiento (actividad 9)**: `src/nlp.py` reutiliza
+  `sentiment_comments.csv` (pysentimiento, `lang="es"`, sobre `texto_original`)
+  y agrega `sentiment_group_summary.csv` por video/canal/categoría/comunidad,
+  más figuras `fig_sentiment_by_category.png` y `fig_sentiment_by_community.png`.
+  Regla aplicada: ningún grupo con n<5 se oculta, solo se marca
+  `small_sample=True`.
+- **Pendiente de ejecutar con acceso a internet**: `sentiment_comments.csv`
+  requiere descargar el modelo de pysentimiento desde Hugging Face
+  (`pysentimiento/robertuito-sentiment-analysis`), no disponible en el entorno
+  donde se verificó este código. Correr
+  `python main.py --stage eda --sentiment` (o `--stage all --sentiment`)
+  antes de `--stage communities` para completar las columnas de sentimiento
+  en `community_content_summary.csv` y generar `sentiment_group_summary.csv`
+  con los porcentajes reales. La lógica de agregación ya está cubierta por
+  pruebas con datos sintéticos en `tests/test_contracts.py`
+  (`test_sentiment_group_summary_*`, `test_community_*`), así que solo falta
+  correr el modelo real, no cambiar código.
 
 ## Notas de compatibilidad (hallazgo de Persona 3, pendiente de que Persona 1 lo corrija)
 

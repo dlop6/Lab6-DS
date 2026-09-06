@@ -12,6 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src import config, io_data, networks
 from src import eda
 from src import metrics
+from src import communities
+from src import nlp
 
 
 def test_video_id_unique():
@@ -412,6 +414,103 @@ def test_community_detection_uses_fixed_seed():
     assert 'weight="weight"' in source or "weight='weight'" in source, (
         "la deteccion de comunidades debe usar weight=\"weight\" explicitamente."
     )
+
+
+# ---------------------------------------------------------------------------
+# actividad 7 (comunidades, entrega final de Persona 2) - fixtures propias
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def video_communities(video_projection):
+    return communities.detect_louvain_communities(video_projection)
+
+
+@pytest.fixture(scope="module")
+def community_assignments(video_projection, video_communities):
+    return communities.build_community_assignments(video_projection, video_communities)
+
+
+@pytest.fixture(scope="module")
+def community_metrics(video_projection, video_communities):
+    return communities.build_community_metrics(video_projection, video_communities)
+
+
+def test_louvain_is_reproducible(video_projection):
+    """seed=42 debe producir siempre la misma particion (mismo grafo -> mismo resultado)."""
+    run_1 = communities.detect_louvain_communities(video_projection)
+    run_2 = communities.detect_louvain_communities(video_projection)
+    sizes_1 = sorted(len(c) for c in run_1)
+    sizes_2 = sorted(len(c) for c in run_2)
+    assert sizes_1 == sizes_2, "dos corridas con seed=42 dieron particiones de distinto tamano"
+
+
+def test_community_assignments_cover_all_video_nodes(community_assignments, video_projection):
+    assert len(community_assignments) == video_projection.number_of_nodes()
+    assert community_assignments["video_id"].is_unique
+    assert community_assignments["community_id"].notna().all()
+
+
+def test_community_metrics_modularity_is_single_value_per_partition(community_metrics):
+    """la modularidad es una propiedad de toda la particion, debe repetirse identica en cada fila."""
+    assert community_metrics["modularity"].nunique() == 1
+    assert community_metrics["n_communities_total"].nunique() == 1
+    assert community_metrics["n_communities_total"].iloc[0] == len(community_metrics)
+
+
+def test_community_metrics_sizes_sum_to_total_videos(community_metrics, video_projection):
+    assert community_metrics["n_videos"].sum() == video_projection.number_of_nodes()
+
+
+def test_community_content_summary_respects_top_n(video_projection, video_communities, comments_clean):
+    summary = communities.characterize_communities(
+        video_projection, video_communities, comments_clean, sentiment_comments=None, top_n=3,
+    )
+    assert len(summary) == min(3, len(video_communities))
+    # ordenado por tamano descendente
+    assert list(summary["n_videos"]) == sorted(summary["n_videos"], reverse=True)
+
+
+def test_reply_count_never_used_for_communities():
+    """igual que en networks.py, reply_count nunca debe participar en la deteccion de comunidades."""
+    source = Path(config.ROOT_DIR / "src" / "communities.py").read_text(encoding="utf-8")
+    assert "reply_count" not in source
+
+
+# ---------------------------------------------------------------------------
+# actividad 9 (contenido y sentimiento, entrega final de Persona 2)
+# ---------------------------------------------------------------------------
+
+def test_sentiment_group_summary_flags_small_samples():
+    """prueba estructural con datos sinteticos: no depende de pysentimiento/modelo real."""
+    sentiment_comments = pd.DataFrame({
+        "video_id": ["v1"] * 6 + ["v2"] * 2,
+        "sentiment_label": ["POS", "POS", "NEU", "NEG", "POS", "NEU", "NEG", "NEG"],
+    })
+    videos_clean = pd.DataFrame({
+        "video_id": ["v1", "v2"],
+        "title": ["Video uno", "Video dos"],
+        "channel_id": ["c1", "c2"],
+        "channel_name": ["Canal 1", "Canal 2"],
+        "category": ["News & Politics", "News & Politics"],
+    })
+    summary = nlp.build_sentiment_group_summary(sentiment_comments, videos_clean)
+    by_video = summary[summary["group_type"] == "video"].set_index("group_key")
+    v1_row = by_video.loc[[k for k in by_video.index if k.startswith("v1")][0]]
+    v2_row = by_video.loc[[k for k in by_video.index if k.startswith("v2")][0]]
+    assert v1_row["n_comments"] == 6 and not v1_row["small_sample"]
+    assert v2_row["n_comments"] == 2 and v2_row["small_sample"]
+
+
+def test_sentiment_group_summary_never_hides_small_groups():
+    """la regla del plan es explicita: n<5 se reporta igual, nunca se oculta el grupo."""
+    sentiment_comments = pd.DataFrame({"video_id": ["v1"], "sentiment_label": ["POS"]})
+    videos_clean = pd.DataFrame({
+        "video_id": ["v1"], "title": ["Solo"], "channel_id": ["c1"],
+        "channel_name": ["Canal"], "category": ["Entertainment"],
+    })
+    summary = nlp.build_sentiment_group_summary(sentiment_comments, videos_clean)
+    assert (summary["n_comments"] > 0).all()
+    assert summary["small_sample"].all()
 
 
 # ---------------------------------------------------------------------------
