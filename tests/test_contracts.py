@@ -4,12 +4,14 @@ por su cuenta, no depende de que main.py ya haya corrido antes.
 """
 import sys
 from pathlib import Path
+import networkx as nx
 import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src import config, io_data, networks
 from src import eda
+from src import metrics
 
 
 def test_video_id_unique():
@@ -319,6 +321,79 @@ def test_reply_count_never_used_for_edges():
 
 def test_reply_count_not_in_edge_weight(bipartite_edges_table):
     assert "reply_count" not in bipartite_edges_table.columns
+
+
+# ---------------------------------------------------------------------------
+# actividad 6 (topologia y fragmentacion) - fixtures propias
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def network_metrics(bipartite_graph, author_projection, video_projection):
+    return metrics.build_network_metrics(bipartite_graph, author_projection, video_projection)
+
+
+@pytest.fixture(scope="module")
+def cohesion_transitivity(bipartite_graph, author_projection, video_projection):
+    return metrics.build_cohesion_transitivity(bipartite_graph, author_projection, video_projection)
+
+
+@pytest.fixture(scope="module")
+def peripheral_nodes(bipartite_graph, author_projection, video_projection):
+    return metrics.build_peripheral_nodes(bipartite_graph, author_projection, video_projection)
+
+
+def test_network_metrics_has_three_rows(network_metrics):
+    assert len(network_metrics) == 3
+    assert set(network_metrics["network"]) == {"bipartite", "author_projection", "video_projection"}
+    assert (network_metrics["lcc_size"] <= network_metrics["n_nodes"]).all(), (
+        "el tamano de la LCC nunca puede superar el total de nodos de su red"
+    )
+
+
+def test_cohesion_transitivity_bipartite_vs_projection_columns(cohesion_transitivity):
+    assert len(cohesion_transitivity) == 3
+    ct = cohesion_transitivity.set_index("network")
+    # bipartite: transitivity NaN, ambos clustering bipartitos con valor
+    assert pd.isna(ct.loc["bipartite", "transitivity"])
+    assert pd.notna(ct.loc["bipartite", "bipartite_clustering_authors"])
+    assert pd.notna(ct.loc["bipartite", "bipartite_clustering_videos"])
+    # proyecciones: transitivity con valor, clustering bipartito NaN
+    for net in ("author_projection", "video_projection"):
+        assert pd.notna(ct.loc[net, "transitivity"]), f"{net} deberia tener transitivity"
+        assert pd.isna(ct.loc[net, "bipartite_clustering_authors"])
+        assert pd.isna(ct.loc[net, "bipartite_clustering_videos"])
+
+
+def test_peripheral_nodes_no_uncollected_videos(peripheral_nodes, videos_clean, comments_clean):
+    coverage = networks.build_comment_coverage(videos_clean, comments_clean)
+    uncollected_ids = set(coverage.loc[~coverage["has_comments_collected"], "video_id"])
+    peripheral_video_ids = {
+        node_id.split(":", 1)[-1]
+        for node_id in peripheral_nodes.loc[peripheral_nodes["node_type"] == "video", "node_id"]
+    }
+    overlap = uncollected_ids & peripheral_video_ids
+    assert not overlap, (
+        f"peripheral_nodes.csv nunca debe incluir videos sin comentarios recolectados "
+        f"como si fueran nodos de la red; se encontraron: {overlap}"
+    )
+
+
+def test_peripheral_nodes_isolated_implies_zero_degree(peripheral_nodes):
+    isolated = peripheral_nodes[peripheral_nodes["is_isolated"]]
+    assert (isolated["degree"] == 0).all(), "todo nodo marcado is_isolated debe tener grado 0"
+
+
+def test_connectivity_uses_lcc_when_disconnected(bipartite_graph, author_projection, video_projection):
+    for name, G in (
+        ("bipartite", bipartite_graph),
+        ("author_projection", author_projection),
+        ("video_projection", video_projection),
+    ):
+        if nx.number_connected_components(G) > 1:
+            lcc = metrics._largest_connected_component_subgraph(G)
+            # no debe lanzar NetworkXError: la LCC es conexa por construccion
+            nx.node_connectivity(lcc)
+            nx.edge_connectivity(lcc)
 
 
 # ---------------------------------------------------------------------------

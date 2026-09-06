@@ -1,8 +1,7 @@
 """
 orquestador definitivo del proyecto (arquitectura de repo, owner: Persona 3).
 
-ejecuta el pipeline por etapas: data, eda
-y bipartite. el orquestador
+ejecuta el pipeline por etapas: data, eda, bipartite y metrics. el orquestador
 no contiene logica de negocio propia: cada etapa delega a las funciones que
 ya viven en su modulo/owner correspondiente.
 
@@ -10,7 +9,8 @@ uso:
     python main.py --stage data
     python main.py --stage eda [--sentiment]
     python main.py --stage bipartite
-    python main.py --stage all [--sentiment]     # corre las 3 etapas en orden
+    python main.py --stage metrics
+    python main.py --stage all [--sentiment]     # corre las 4 etapas en orden
 """
 import sys
 from pathlib import Path
@@ -105,10 +105,21 @@ def run_persona3_bipartite() -> None:
     print("=== etapa 'bipartite' completa, revisa outputs/tables/ y outputs/figures/ ===")
 
 
+def run_persona1_metrics() -> None:
+    """Etapa 'metrics': actividad 6 (topologia y fragmentacion). Depende de que
+    la etapa 'data' y 'bipartite' ya hayan corrido; no reconstruye proyecciones,
+    solo las consume desde src/networks.py para medir estructura."""
+    from src import metrics
+    print("=== persona 1: topologia y fragmentacion (actividad 6) ===")
+    metrics.run_metrics_stage()
+    print("=== etapa 'metrics' completa, revisa outputs/tables/ ===")
+
+
 STAGES = {
     "data": lambda args: run_persona1_pipeline(),
     "eda": lambda args: run_persona2_advance(args.sentiment),
     "bipartite": lambda args: run_persona3_bipartite(),
+    "metrics": lambda args: run_persona1_metrics(),
 }
 
 
