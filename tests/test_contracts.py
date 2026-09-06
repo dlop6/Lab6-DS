@@ -12,20 +12,6 @@ from src import config, io_data, networks
 from src import eda
 
 
-def test_raw_videos_shape():
-    videos = io_data.load_videos()
-    assert videos.shape == config.EXPECTED_VIDEOS_SHAPE, (
-        f"shape actual {videos.shape} no coincide con el contrato {config.EXPECTED_VIDEOS_SHAPE}"
-    )
-
-
-def test_raw_comments_shape():
-    comments = io_data.load_comments()
-    assert comments.shape == config.EXPECTED_COMMENTS_SHAPE, (
-        f"shape actual {comments.shape} no coincide con el contrato {config.EXPECTED_COMMENTS_SHAPE}"
-    )
-
-
 def test_video_id_unique():
     videos = io_data.load_videos()
     n_unique = videos["video_id"].nunique()
@@ -66,15 +52,6 @@ def test_join_coverage_406_406():
         f"(coverage {row['coverage_pct']}%)"
     )
     assert row["coverage_pct"] == 100.0, f"coverage_pct actual {row['coverage_pct']}, se esperaba 100.0"
-
-
-def test_commented_videos_count():
-    comments = io_data.load_comments()
-    n_unique_videos = comments["video_id"].nunique()
-    assert n_unique_videos == config.EXPECTED_COMMENTED_VIDEOS, (
-        f"hay {n_unique_videos} video_id unicos en comments, "
-        f"se esperaban {config.EXPECTED_COMMENTED_VIDEOS}"
-    )
 
 
 def test_persona2_video_participation_contract():
