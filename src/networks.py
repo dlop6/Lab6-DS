@@ -2,7 +2,8 @@
 Actividad 4 y soporte de actividad 5: red bipartita autor-video, tablas de
 nodos/aristas, y funciones reutilizables de proyeccion (incidencia binaria).
 
-No se reconstruye a mano en otros modulos:
+Owner: Persona 3. Consumido por Persona 2 (precompute de comunidades para 3.5,
+H3) y por Persona 1 (topologia, H4). No se reconstruye a mano en otros modulos:
 quien necesite el grafo o las proyecciones importa estas funciones.
 
 Regla de oro heredada de la guia y del plan: reply_count NUNCA participa en la
@@ -421,5 +422,223 @@ def run_bipartite_stage(save_projections: bool = True) -> dict:
     return result
 
 
+# ---------------------------------------------------------------------------
+# 5.1-5.4 (entrega final) - proyecciones formales: tablas + figuras + comparacion
+# ---------------------------------------------------------------------------
+
+PROJECTIONS_COMPARISON_TEXT = (
+    "La proyeccion autor-autor y la proyeccion video-video se construyen desde "
+    "la misma incidencia binaria de la red bipartita, pero representan fenomenos "
+    "distintos. Autor-autor conecta a dos personas si comentaron en el mismo "
+    "video: es una red de co-participacion entre usuarios (332 nodos, "
+    "densidad 0.195), muy densa porque un solo video con muchos comentaristas "
+    "genera automaticamente muchas conexiones entre pares de autores, sin que "
+    "eso implique que esas personas interactuaron entre si (el peso es "
+    "'videos compartidos', nunca una conversacion). Video-video conecta dos "
+    "videos si comparten al menos un autor: es una red de solapamiento de "
+    "audiencias (19 nodos, densidad 0.064), mucho mas dispersa y con casi la "
+    "mitad de sus nodos aislados (9/19), porque la mayoria de los autores "
+    "observados comento en un unico video y por lo tanto no genera ningun "
+    "puente entre dos videos. Ninguna de las dos aristas debe leerse como "
+    "amistad, conversacion directa ni aprobacion; el mismo principio de la "
+    "actividad 4 aplica aqui."
+)
+
+
+def draw_projection(P: nx.Graph, title: str, output_path: Path, label_top_n: int = 0) -> None:
+    """
+    Dibuja una proyeccion completa (todos los nodos, todas las aristas; nunca
+    se filtra para 'limpiar' la figura). label_top_n permite etiquetar solo
+    los nodos de mayor grado cuando hay demasiados para etiquetar a todos
+    (ej. los 332 autores), sin ocultar ni eliminar el resto de nodos/aristas.
+    """
+    n_nodes = P.number_of_nodes()
+    pos = nx.spring_layout(P, weight="weight", seed=config.SEED, k=1.5 / max(n_nodes, 1) ** 0.5)
+
+    degrees = dict(P.degree())
+    fig, ax = plt.subplots(figsize=(11, 9))
+    edge_weights = [d.get("weight", 1) for _, _, d in P.edges(data=True)]
+    max_w = max(edge_weights) if edge_weights else 1
+    nx.draw_networkx_edges(
+        P, pos, alpha=0.08, width=[0.4 + 1.2 * (w / max_w) for w in edge_weights],
+        edge_color="#888888", ax=ax,
+    )
+    node_sizes = [18 + 3 * degrees[n] for n in P.nodes()]
+    nx.draw_networkx_nodes(P, pos, node_size=node_sizes, node_color="#3f7d9f", alpha=0.8, ax=ax)
+
+    if label_top_n:
+        top_nodes = sorted(degrees, key=degrees.get, reverse=True)[:label_top_n]
+        labels = {}
+        for n in top_nodes:
+            title_attr = str(P.nodes[n].get("title") or P.nodes[n].get("video_id") or n)
+            labels[n] = title_attr if len(title_attr) <= 26 else title_attr[:23] + "..."
+        nx.draw_networkx_labels(P, pos, labels=labels, font_size=7, ax=ax)
+
+    ax.set_title(f"{title} ({n_nodes} nodos, {P.number_of_edges()} aristas)")
+    ax.axis("off")
+    fig.tight_layout()
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=170)
+    plt.close(fig)
+
+
+def run_projections_final_stage(G: nx.Graph | None = None) -> dict:
+    """
+    Entrega formal de la actividad 5 (jueves solo dejo soporte preliminar para
+    3.5). Reconstruye G si no se recibe uno ya armado, guarda
+    author_projection_edges.csv / video_projection_edges.csv (sin sufijo
+    'preliminary') y una figura por proyeccion.
+    """
+    if G is None:
+        videos_clean = pd.read_csv(config.PROCESSED_DIR / "videos_clean.csv", encoding=config.CSV_ENCODING)
+        comments_clean = pd.read_csv(config.PROCESSED_DIR / "comments_clean.csv", encoding=config.CSV_ENCODING)
+        G = build_bipartite_graph(comments_clean, videos_clean)
+
+    author_proj = build_author_projection(G)
+    video_proj = build_video_projection(G)
+    author_edges = build_projection_edges_table(author_proj, "author_channel_id")
+    video_edges = build_projection_edges_table(video_proj, "video_id")
+
+    config.TABLES_DIR.mkdir(parents=True, exist_ok=True)
+    config.FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    author_edges.to_csv(config.TABLES_DIR / "author_projection_edges.csv", index=False, encoding=config.CSV_ENCODING)
+    video_edges.to_csv(config.TABLES_DIR / "video_projection_edges.csv", index=False, encoding=config.CSV_ENCODING)
+
+    draw_projection(
+        author_proj, "Proyeccion autor-autor (peso = videos compartidos)",
+        config.FIGURES_DIR / "fig_author_projection.png", label_top_n=0,
+    )
+    draw_projection(
+        video_proj, "Proyeccion video-video (peso = autores compartidos)",
+        config.FIGURES_DIR / "fig_video_projection.png", label_top_n=19,
+    )
+
+    print(
+        f"[networks] proyecciones finales: author_projection "
+        f"{author_proj.number_of_nodes()}n/{author_proj.number_of_edges()}a, "
+        f"video_projection {video_proj.number_of_nodes()}n/{video_proj.number_of_edges()}a"
+    )
+    return {
+        "author_projection": author_proj, "video_projection": video_proj,
+        "author_edges": author_edges, "video_edges": video_edges,
+    }
+
+
+# ---------------------------------------------------------------------------
+# 8.1-8.3 (entrega final) - centralidad y participantes puente
+# ---------------------------------------------------------------------------
+
+def build_centrality_table(G: nx.Graph, node_type: str) -> pd.DataFrame:
+    """
+    Centralidad para un tipo de nodo (author o video) DENTRO de la red
+    bipartita completa. degree y strength describen el patron directo de
+    participacion de ese nodo; betweenness se calcula UNA sola vez sobre toda
+    la bipartita (no por separado por tipo, porque los caminos mas cortos
+    entre dos autores necesariamente pasan por videos y viceversa) y aqui se
+    reporta la porcion que corresponde a este tipo. betweenness es SIN
+    ponderar (no se usa weight_comments como distancia/costo): la cantidad de
+    comentarios de un autor en un video no representa una distancia, asi que
+    tratarla como tal distorsionaria los caminos mas cortos. Se complementa
+    con PageRank (tambien sin ponderar) porque captura una nocion distinta:
+    que tan conectado esta un nodo a otros nodos que a su vez estan bien
+    conectados, util para ver que videos concentran autores influyentes o que
+    autores llegan a videos con mucho alcance.
+    """
+    nodes = [n for n, d in G.nodes(data=True) if d.get("node_type") == node_type]
+    betweenness = nx.betweenness_centrality(G)  # no ponderado, sobre toda la bipartita
+    pagerank = nx.pagerank(G)  # no ponderado
+
+    rows = []
+    for n in nodes:
+        attrs = G.nodes[n]
+        strength = sum(d.get("weight_comments", 0) for _, _, d in G.edges(n, data=True))
+        rows.append({
+            "node_id": n,
+            "node_type": node_type,
+            "label": attrs.get("label"),
+            "degree": G.degree(n),
+            "strength_comments": strength,
+            "betweenness": betweenness[n],
+            "pagerank": pagerank[n],
+            **({"videos_distinct": attrs.get("videos_distinct")} if node_type == "author" else {}),
+            **({"comment_count": attrs.get("comment_count"), "view_count": attrs.get("view_count")}
+               if node_type == "video" else {}),
+        })
+    df = pd.DataFrame(rows)
+    return df.sort_values(["betweenness", "degree"], ascending=False).reset_index(drop=True)
+
+
+def build_articulation_points(G: nx.Graph) -> pd.DataFrame:
+    """
+    Puntos de articulacion de la bipartita (no ponderada: articulation_points
+    solo mira conectividad, ignora cualquier atributo de peso). Para cada uno,
+    reporta cuantos componentes tendria la red si se eliminara ese nodo, para
+    poder decir con evidencia "si lo elimináramos, la red se segmenta [en N
+    componentes en vez de los actuales]".
+    """
+    base_components = nx.number_connected_components(G)
+    points = list(nx.articulation_points(G))
+    rows = []
+    for node_id in points:
+        H = G.copy()
+        H.remove_node(node_id)
+        after = nx.number_connected_components(H)
+        attrs = G.nodes[node_id]
+        rows.append({
+            "node_id": node_id,
+            "node_type": attrs.get("node_type"),
+            "label": attrs.get("label") or attrs.get("title"),
+            "degree": G.degree(node_id),
+            "components_before_removal": base_components,
+            "components_after_removal": after,
+            "components_added": after - base_components,
+        })
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+    return df.sort_values("components_added", ascending=False).reset_index(drop=True)
+
+
+def run_centrality_stage(G: nx.Graph | None = None) -> dict:
+    """Entrega formal de la actividad 8 (centralidad y participantes puente)."""
+    if G is None:
+        videos_clean = pd.read_csv(config.PROCESSED_DIR / "videos_clean.csv", encoding=config.CSV_ENCODING)
+        comments_clean = pd.read_csv(config.PROCESSED_DIR / "comments_clean.csv", encoding=config.CSV_ENCODING)
+        G = build_bipartite_graph(comments_clean, videos_clean)
+
+    centrality_authors = build_centrality_table(G, "author")
+    centrality_videos = build_centrality_table(G, "video")
+    articulation_points = build_articulation_points(G)
+
+    config.TABLES_DIR.mkdir(parents=True, exist_ok=True)
+    centrality_authors.to_csv(config.TABLES_DIR / "centrality_authors.csv", index=False, encoding=config.CSV_ENCODING)
+    centrality_videos.to_csv(config.TABLES_DIR / "centrality_videos.csv", index=False, encoding=config.CSV_ENCODING)
+    articulation_points.to_csv(config.TABLES_DIR / "articulation_points.csv", index=False, encoding=config.CSV_ENCODING)
+
+    print(
+        f"[networks] centralidad: {len(centrality_authors)} autores, "
+        f"{len(centrality_videos)} videos, {len(articulation_points)} puntos de articulacion"
+    )
+    return {
+        "centrality_authors": centrality_authors,
+        "centrality_videos": centrality_videos,
+        "articulation_points": articulation_points,
+    }
+
+
+def run_network_final_stage() -> dict:
+    """Etapa 'network_final': actividades 5 (formal) y 8 completas, sobre la
+    misma bipartita (se construye una sola vez y se reutiliza para ambas)."""
+    videos_clean = pd.read_csv(config.PROCESSED_DIR / "videos_clean.csv", encoding=config.CSV_ENCODING)
+    comments_clean = pd.read_csv(config.PROCESSED_DIR / "comments_clean.csv", encoding=config.CSV_ENCODING)
+    G = build_bipartite_graph(comments_clean, videos_clean)
+
+    projections = run_projections_final_stage(G)
+    centrality = run_centrality_stage(G)
+    return {**projections, **centrality, "graph": G}
+
+
 if __name__ == "__main__":
     run_bipartite_stage()
+    run_network_final_stage()

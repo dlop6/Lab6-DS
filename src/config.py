@@ -36,3 +36,4 @@ COMMENTS_ID_COLUMNS = ["video_id", "comment_id", "channel_id", "author_channel_i
 # etiquetas visibles, solo para presentacion, jamas se usan como identificador
 VIDEOS_LABEL_COLUMNS = ["channel_name", "channel_handle", "owner_handle"]
 COMMENTS_LABEL_COLUMNS = ["author_name", "author_handle"]
+COMMUNITY_TOP_N = 3

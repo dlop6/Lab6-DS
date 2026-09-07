@@ -10,8 +10,9 @@ uso:
     python main.py --stage eda [--sentiment]
     python main.py --stage bipartite
     python main.py --stage metrics
-    python main.py --stage communities   # persona 2, entrega final: actividades 7 y 9
-    python main.py --stage all [--sentiment]     # corre las 5 etapas en orden
+    python main.py --stage communities
+    python main.py --stage network_final
+    python main.py --stage all [--sentiment]     # corre las 6 etapas en orden
 """
 import sys
 from pathlib import Path
@@ -116,29 +117,22 @@ def run_persona1_metrics() -> None:
     print("=== etapa 'metrics' completa, revisa outputs/tables/ ===")
 
 
-def run_persona2_final() -> None:
-    """Etapa 'communities': entrega final de Persona 2, actividades 7 y 9.
-
-    Depende de que 'data' y 'bipartite' ya hayan corrido (necesita
-    videos_clean.csv, comments_clean.csv y la bipartita/proyecciones que
-    entrega src/networks.py). No reconstruye la red a mano.
-
-    7 (comunidades): Louvain sobre la proyeccion video-video, seed=42,
-    weight="weight". Genera community_assignments.csv, community_metrics.csv,
-    fig_video_communities.png y community_content_summary.csv (hasta 3
-    comunidades principales).
-
-    9 (contenido y sentimiento): reutiliza sentiment_comments.csv (lo genera
-    si aun no existe) y produce sentiment_group_summary.csv + figuras,
-    comparando por video, canal, categoria y comunidad (esta ultima usa el
-    community_assignments.csv que la propia etapa acaba de generar).
-    """
-    from src import communities, nlp
-    print("=== persona 2: comunidades (actividad 7) ===")
+def run_persona2_communities() -> None:
+    """Etapa 'communities': actividades 7 y 9 (comunidades, contenido y
+    sentimiento). Owner: Persona 2."""
+    from src import communities
+    print("=== persona 2: comunidades y contenido/sentimiento (actividades 7, 9) ===")
     communities.run_communities_stage()
-    print("=== persona 2: contenido y sentimiento (actividad 9) ===")
-    nlp.run_sentiment_comparison()
-    print("=== etapa 'communities' completa, revisa outputs/tables/ y outputs/figures/ ===")
+    print("=== etapa 'communities' completa ===")
+
+
+def run_persona3_network_final() -> None:
+    """Etapa 'network_final': actividades 5 (formal) y 8 (centralidad,
+    articuladores). Owner: Persona 3."""
+    from src import networks
+    print("=== persona 3: proyecciones formales y centralidad (actividades 5, 8) ===")
+    networks.run_network_final_stage()
+    print("=== etapa 'network_final' completa ===")
 
 
 STAGES = {
@@ -146,7 +140,8 @@ STAGES = {
     "eda": lambda args: run_persona2_advance(args.sentiment),
     "bipartite": lambda args: run_persona3_bipartite(),
     "metrics": lambda args: run_persona1_metrics(),
-    "communities": lambda args: run_persona2_final(),
+    "communities": lambda args: run_persona2_communities(),
+    "network_final": lambda args: run_persona3_network_final(),
 }
 
 
